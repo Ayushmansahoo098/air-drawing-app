@@ -159,16 +159,45 @@ Allow camera access when prompted. Wait ~5 seconds for hand tracking to initiali
 |---|---|---|
 | `MONGODB_URI` | `mongodb://localhost:27017/air-drawing` | MongoDB connection string |
 | `PORT` | `5001` | Server port |
+| `CORS_ORIGINS` | `http://localhost:3000,http://localhost:5173` | Allowed frontend origins (comma-separated) |
+| `VITE_API_BASE_URL` | *(empty in local dev)* | Backend base URL for deployed frontend (for example `https://your-api.onrender.com`) |
+
+---
+
+## 🚀 Publish / Deploy
+
+### Backend (Render)
+
+1. Create a new **Web Service** from the `server/` folder.
+2. Build command: `npm install`
+3. Start command: `npm start`
+4. Add env vars:
+   - `MONGODB_URI=<your mongodb atlas uri>`
+   - `PORT=5001`
+   - `NODE_ENV=production`
+   - `CORS_ORIGINS=https://<your-frontend-domain>`
+
+### Frontend (Vercel or Netlify)
+
+1. Deploy the `client/` folder as a static Vite app.
+2. Build command: `npm run build`
+3. Publish directory: `dist`
+4. Add env var:
+   - `VITE_API_BASE_URL=https://<your-backend-domain>`
+
+After deploy, open your frontend URL and verify:
+- camera permissions work
+- save/delete works
+- gallery loads from your deployed backend
 
 ---
 
 ## 🎨 Customization
 
 Colors, fonts, and layout are controlled in `client/src/index.css`. The app uses:
-- **Bebas Neue** — display headings
-- **Inter** — body text
-- **Space Mono** — labels and badges
-- Gold `#c8a96e` as the primary accent color
+- **Sora** — display/body typography
+- **IBM Plex Mono** — labels and badges
+- Orange/blue accent system with glassmorphism surfaces
 
 ---
 

@@ -3,6 +3,7 @@ import axios from 'axios';
 import HandTracking from './components/HandTracking';
 import Toolbar from './components/Toolbar';
 import Gallery from './components/Gallery';
+import { apiUrl, isLocalBackend } from './config/api';
 
 // ─── Toast System ─────────────────────────────────────────────────────────────
 function Toast({ toasts }) {
@@ -87,7 +88,7 @@ export default function App() {
 
     setSaving(true);
     try {
-      await axios.post('/api/drawings', {
+      await axios.post(apiUrl('/api/drawings'), {
         title: title || 'Untitled Drawing',
         imageData,
         color,
@@ -96,7 +97,7 @@ export default function App() {
       addToast('Drawing saved! 🎉', 'success');
       setShowSaveModal(false);
     } catch (err) {
-      addToast('Save failed — is the server running?', 'error');
+      addToast('Save failed — backend unavailable', 'error');
       console.error(err);
     } finally {
       setSaving(false);
@@ -121,7 +122,9 @@ export default function App() {
     addToast('No hand detected for 1 minute. Closing app…', 'info');
 
     try {
-      await axios.post('/api/control/shutdown');
+      if (isLocalBackend()) {
+        await axios.post(apiUrl('/api/control/shutdown'));
+      }
     } catch (err) {
       console.error('Server shutdown request failed:', err);
     } finally {

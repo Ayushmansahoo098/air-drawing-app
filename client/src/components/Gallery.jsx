@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { apiUrl } from '../config/api';
 
-const API = '/api/drawings';
+const API = apiUrl('/api/drawings');
 
 /**
  * Gallery
@@ -22,7 +23,7 @@ export default function Gallery({ onToast }) {
       const { data } = await axios.get(API);
       setDrawings(data.drawings || []);
     } catch (err) {
-      setError('Failed to load drawings. Is the server running?');
+      setError('Failed to load drawings. Check backend URL/config.');
       console.error(err);
     } finally {
       setLoading(false);

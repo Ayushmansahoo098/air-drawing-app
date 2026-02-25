@@ -7,10 +7,20 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 const SHUTDOWN_GRACE_MS = 500;
 let httpServer = null;
+const allowedOrigins = (
+  process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
+    : ['http://localhost:3000', 'http://localhost:5173']
+);
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173'],
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS origin not allowed'));
+  },
   credentials: true,
 }));
 
@@ -23,6 +33,10 @@ app.use('/api/drawings', require('./routes/drawings'));
 
 // Local-only shutdown endpoint used by inactivity automation in the client.
 app.post('/api/control/shutdown', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'Disabled in production' });
+  }
+
   const localIps = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
   const requesterIp = req.ip || req.socket?.remoteAddress;
   if (!localIps.has(requesterIp)) {
