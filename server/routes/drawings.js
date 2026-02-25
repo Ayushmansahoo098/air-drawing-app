@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Drawing = require('../models/Drawing');
 
 // ─── POST /api/drawings ───────────────────────────────────────────────────────
@@ -18,7 +19,11 @@ router.post('/', async (req, res) => {
     res.status(201).json({ success: true, drawing: saved });
   } catch (err) {
     console.error('Error saving drawing:', err);
-    res.status(500).json({ error: 'Failed to save drawing', message: err.message });
+    const payload = { error: 'Failed to save drawing' };
+    if (process.env.NODE_ENV !== 'production') {
+      payload.message = err.message;
+    }
+    res.status(500).json(payload);
   }
 });
 
@@ -26,8 +31,12 @@ router.post('/', async (req, res) => {
 // Retrieve all drawings (newest first, strip imageData for listing)
 router.get('/', async (req, res) => {
   try {
+    const rawLimit = Number.parseInt(req.query.limit, 10);
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 50) : 20;
+
     const drawings = await Drawing.find()
       .sort({ createdAt: -1 })
+      .limit(limit)
       .select('title color thickness createdAt imageData');
 
     res.json({ success: true, count: drawings.length, drawings });
@@ -41,7 +50,11 @@ router.get('/', async (req, res) => {
 // Get single drawing by ID
 router.get('/:id', async (req, res) => {
   try {
-    const drawing = await Drawing.findById(req.params.id);
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid drawing id' });
+    }
+    const drawing = await Drawing.findById(id);
     if (!drawing) return res.status(404).json({ error: 'Drawing not found' });
     res.json({ success: true, drawing });
   } catch (err) {
@@ -53,7 +66,11 @@ router.get('/:id', async (req, res) => {
 // Delete a drawing by ID
 router.delete('/:id', async (req, res) => {
   try {
-    const deleted = await Drawing.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid drawing id' });
+    }
+    const deleted = await Drawing.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ error: 'Drawing not found' });
     res.json({ success: true, message: 'Drawing deleted' });
   } catch (err) {

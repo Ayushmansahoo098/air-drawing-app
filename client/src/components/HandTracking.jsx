@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useHandTracking } from '../hooks/useHandTracking';
 import DrawingCanvas from './DrawingCanvas';
 
@@ -10,7 +10,7 @@ const STATUS_CONFIG = {
 };
 
 const HandTracking = forwardRef(function HandTracking(
-  { color, thickness, erasing },
+  { color, thickness, erasing, onInactivityTimeout },
   ref
 ) {
   const videoRef = useRef(null);
@@ -22,7 +22,8 @@ const HandTracking = forwardRef(function HandTracking(
   // Hand tracking via CDN MediaPipe
   const { gesture: rawGesture, indexTip, isReady, error: trackingError } = useHandTracking(
     videoRef,
-    skeletonCanvasRef
+    skeletonCanvasRef,
+    onInactivityTimeout
   );
 
   const gesture = erasing ? 'erase' : rawGesture;

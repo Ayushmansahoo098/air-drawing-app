@@ -32,9 +32,9 @@ export const LM = {
  * @param {Array} landmarks  - array of {x,y,z} normalized coordinates
  * @param {number} tipIdx    - landmark index of fingertip
  * @param {number} pipIdx    - landmark index of PIP (proximal interphalangeal) joint
- * @param {number} threshold - how much higher the tip must be (default 0.06)
+ * @param {number} threshold - how much higher the tip must be (default 0.03)
  */
-export function isFingerUp(landmarks, tipIdx, pipIdx, threshold = 0.06) {
+export function isFingerUp(landmarks, tipIdx, pipIdx, threshold = 0.03) {
   if (!landmarks || !landmarks[tipIdx] || !landmarks[pipIdx]) return false;
   return landmarks[tipIdx].y < landmarks[pipIdx].y - threshold;
 }
@@ -51,10 +51,10 @@ export function isFingerUp(landmarks, tipIdx, pipIdx, threshold = 0.06) {
 export function detectGesture(landmarks) {
   if (!landmarks || landmarks.length < 21) return 'pause';
 
-  const indexUp  = isFingerUp(landmarks, LM.INDEX_TIP,  LM.INDEX_PIP,  0.05);
-  const middleUp = isFingerUp(landmarks, LM.MIDDLE_TIP, LM.MIDDLE_PIP, 0.05);
-  const ringUp   = isFingerUp(landmarks, LM.RING_TIP,   LM.RING_MCP,   0.05);
-  const pinkyUp  = isFingerUp(landmarks, LM.PINKY_TIP,  LM.PINKY_MCP,  0.05);
+  const indexUp  = isFingerUp(landmarks, LM.INDEX_TIP,  LM.INDEX_PIP,  0.03);
+  const middleUp = isFingerUp(landmarks, LM.MIDDLE_TIP, LM.MIDDLE_PIP, 0.03);
+  const ringUp   = isFingerUp(landmarks, LM.RING_TIP,   LM.RING_MCP,   0.03);
+  const pinkyUp  = isFingerUp(landmarks, LM.PINKY_TIP,  LM.PINKY_MCP,  0.03);
 
   if (indexUp && middleUp) return 'erase';   // ✌️ Two fingers → erase
   if (indexUp && !middleUp) return 'draw';   // ☝️ One finger  → draw

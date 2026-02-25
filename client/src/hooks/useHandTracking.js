@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { detectGesture, getIndexTip } from '../utils/handGestures';
 
-export function useHandTracking(videoRef, skeletonCanvasRef) {
+const INACTIVITY_TIMEOUT_MS = 60 * 1000;
+
+export function useHandTracking(videoRef, skeletonCanvasRef, onInactivityTimeout) {
   const [gesture, setGesture] = useState('pause');
   const [indexTip, setIndexTip] = useState(null);
   const [isReady, setIsReady] = useState(false);
@@ -9,6 +11,8 @@ export function useHandTracking(videoRef, skeletonCanvasRef) {
 
   const handsRef = useRef(null);
   const animRef = useRef(null);
+  const lastHandSeenAtRef = useRef(Date.now());
+  const timedOutRef = useRef(false);
 
   const onResults = useCallback((results) => {
     const canvas = skeletonCanvasRef?.current;
@@ -17,6 +21,7 @@ export function useHandTracking(videoRef, skeletonCanvasRef) {
 
     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
       const hand = results.multiHandLandmarks[0];
+      lastHandSeenAtRef.current = Date.now();
       if (canvas && ctx) drawHandSkeleton(ctx, hand, canvas.width, canvas.height);
       setGesture(detectGesture(hand));
       setIndexTip(getIndexTip(hand));
@@ -87,8 +92,8 @@ export function useHandTracking(videoRef, skeletonCanvasRef) {
         hands.setOptions({
           maxNumHands: 1,
           modelComplexity: 1,
-          minDetectionConfidence: 0.7,
-          minTrackingConfidence: 0.6,
+          minDetectionConfidence: 0.55,
+          minTrackingConfidence: 0.5,
         });
 
         hands.onResults(onResults);
@@ -105,6 +110,8 @@ export function useHandTracking(videoRef, skeletonCanvasRef) {
 
         if (!cancelled) {
           setIsReady(true);
+          timedOutRef.current = false;
+          lastHandSeenAtRef.current = Date.now();
           console.log('✅ Hand tracking ready');
           animRef.current = requestAnimationFrame(processFrame);
         }
@@ -130,6 +137,20 @@ export function useHandTracking(videoRef, skeletonCanvasRef) {
       }
     };
   }, []); // eslint-disable-line
+
+  useEffect(() => {
+    if (!isReady || timedOutRef.current) return;
+    const interval = setInterval(() => {
+      if (timedOutRef.current) return;
+      const inactiveFor = Date.now() - lastHandSeenAtRef.current;
+      if (inactiveFor >= INACTIVITY_TIMEOUT_MS) {
+        timedOutRef.current = true;
+        onInactivityTimeout?.();
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isReady, onInactivityTimeout]);
 
   return { gesture, indexTip, isReady, error };
 }

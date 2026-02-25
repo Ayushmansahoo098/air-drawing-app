@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import axios from 'axios';
 import HandTracking from './components/HandTracking';
 import Toolbar from './components/Toolbar';
@@ -59,6 +59,7 @@ export default function App() {
   const [toasts, setToasts] = useState([]);
 
   const handTrackingRef = useRef(null);
+  const shutdownInProgressRef = useRef(false);
 
   // ── Toast helpers ──────────────────────────────────────────────────────────
   const addToast = useCallback((message, type = 'info') => {
@@ -102,6 +103,32 @@ export default function App() {
     }
   };
 
+  const closeWebPage = () => {
+    // Browsers may block tab closing unless script-opened; provide fallback.
+    window.open('', '_self');
+    window.close();
+    setTimeout(() => {
+      if (!document.hidden) {
+        window.location.replace('about:blank');
+      }
+    }, 350);
+  };
+
+  const handleInactivityTimeout = useCallback(async () => {
+    if (shutdownInProgressRef.current) return;
+    shutdownInProgressRef.current = true;
+
+    addToast('No hand detected for 1 minute. Closing app…', 'info');
+
+    try {
+      await axios.post('/api/control/shutdown');
+    } catch (err) {
+      console.error('Server shutdown request failed:', err);
+    } finally {
+      setTimeout(closeWebPage, 700);
+    }
+  }, [addToast]);
+
   return (
     <div className="app">
       {/* ── Header ─────────────────────────────────────────────────── */}
@@ -134,6 +161,7 @@ export default function App() {
             color={color}
             thickness={thickness}
             erasing={erasing}
+            onInactivityTimeout={handleInactivityTimeout}
           />
           <Toolbar
             color={color}

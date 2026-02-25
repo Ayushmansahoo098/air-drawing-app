@@ -23,8 +23,8 @@ const drawingSchema = new mongoose.Schema(
     thickness: {
       type: Number,
       default: 4,
-      min: 1,
-      max: 50,
+      min:1,
+      max:50,
     },
     createdAt: {
       type: Date,
