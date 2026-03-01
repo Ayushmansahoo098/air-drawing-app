@@ -30,6 +30,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 app.use('/api/drawings', require('./routes/drawings'));
+app.use('/api/scores', require('./routes/scores'));
 
 // Local-only shutdown endpoint used by inactivity automation in the client.
 app.post('/api/control/shutdown', (req, res) => {
