@@ -13,6 +13,8 @@ export default function useHandTracker(webcamRef) {
   const [handState, setHandState] = useState({
     indexTip: null,
     pinchDistance: Number.POSITIVE_INFINITY,
+    allFingersExtended: false,
+    indexPointing: false,
   });
 
   const handLandmarkerRef = useRef(null);
@@ -48,9 +50,9 @@ export default function useHandTracker(webcamRef) {
           },
           runningMode: 'VIDEO',
           numHands: 1,
-          minHandDetectionConfidence: 0.5,
-          minHandPresenceConfidence: 0.5,
-          minTrackingConfidence: 0.5,
+          minHandDetectionConfidence: 0.4,
+          minHandPresenceConfidence: 0.4,
+          minTrackingConfidence: 0.4,
         });
 
         if (!mounted) return;
@@ -95,27 +97,41 @@ export default function useHandTracker(webcamRef) {
         const hand = results.landmarks?.[0];
 
         if (!hand) {
-          // No hand in frame -> report null point and infinite pinch distance.
-          setHandState({ indexTip: null, pinchDistance: Number.POSITIVE_INFINITY });
+          setHandState({ indexTip: null, pinchDistance: Number.POSITIVE_INFINITY, allFingersExtended: false, indexPointing: false });
         } else {
-          // Index tip (8) + thumb tip (4) create pinch distance for draw trigger.
           const indexTip = hand[8];
           const thumbTip = hand[4];
+          const indexPip = hand[6];
+          const middleTip = hand[12];
+          const ringTip = hand[16];
+          const pinkyTip = hand[20];
+          const wrist = hand[0];
           const pinchDistance = Math.hypot(indexTip.x - thumbTip.x, indexTip.y - thumbTip.y);
 
-          // Mirror X so hand movement matches mirrored camera preview.
+          // Index pointing: index extended (tip farther from wrist than pip), others curled
+          const indexExtended = Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y) >
+            Math.hypot(indexPip.x - wrist.x, indexPip.y - wrist.y) * 1.15;
+          const middleCurled = Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y) <
+            Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y) * 0.95;
+          const indexPointing = indexExtended && middleCurled && pinchDistance > 0.1;
+
+          // All fingers extended: index-to-pinky spread large (open palm)
+          const indexToPinky = Math.hypot(pinkyTip.x - indexTip.x, pinkyTip.y - indexTip.y);
+          const allFingersExtended = indexToPinky > 0.14 && pinchDistance > 0.08;
+
           const mirroredPoint = { x: 1 - indexTip.x, y: indexTip.y, z: indexTip.z ?? 0 };
           const prev = lastPointRef.current;
 
-          // Skip tiny movement updates to reduce React re-renders.
           if (
             !prev ||
-            Math.abs(prev.x - mirroredPoint.x) > 0.0012 ||
-            Math.abs(prev.y - mirroredPoint.y) > 0.0012 ||
-            Math.abs(prev.d - pinchDistance) > 0.0012
+            Math.abs(prev.x - mirroredPoint.x) > 0.0008 ||
+            Math.abs(prev.y - mirroredPoint.y) > 0.0008 ||
+            Math.abs(prev.d - pinchDistance) > 0.0008 ||
+            prev.allFingers !== allFingersExtended ||
+            prev.indexPointing !== indexPointing
           ) {
-            lastPointRef.current = { x: mirroredPoint.x, y: mirroredPoint.y, d: pinchDistance };
-            setHandState({ indexTip: mirroredPoint, pinchDistance });
+            lastPointRef.current = { x: mirroredPoint.x, y: mirroredPoint.y, d: pinchDistance, allFingers: allFingersExtended, indexPointing };
+            setHandState({ indexTip: mirroredPoint, pinchDistance, allFingersExtended, indexPointing });
           }
         }
       }
@@ -140,5 +156,7 @@ export default function useHandTracker(webcamRef) {
     loadingProgress,
     indexTip: handState.indexTip,
     pinchDistance: handState.pinchDistance,
+    allFingersExtended: handState.allFingersExtended,
+    indexPointing: handState.indexPointing,
   };
 }

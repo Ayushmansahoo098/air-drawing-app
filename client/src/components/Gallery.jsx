@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useEffect, useState } from 'react';
 import { apiUrl } from '../config/api';
 
 const API = apiUrl('/api/drawings');
@@ -130,12 +130,13 @@ export default function Gallery({ onToast }) {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: 'var(--surface2)',
-              border: '1px solid var(--border)',
-              borderRadius: 16,
+              background: 'rgba(13, 0, 37, 0.97)',
+              border: '1px solid rgba(139,92,246,.4)',
+              borderRadius: 20,
               overflow: 'hidden',
               maxWidth: '90vw',
               maxHeight: '90vh',
+              boxShadow: '0 0 80px rgba(124,58,237,.35)',
             }}
           >
             <img

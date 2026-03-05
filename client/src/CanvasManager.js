@@ -1,5 +1,20 @@
 const WALL_RGB = { r: 25, g: 30, b: 56 };
 
+// 10 puzzle levels: paths as [xRatio, yRatio] 0-1, lineWidth ratio, start/finish
+// Start bottom-left, finish top-right
+const PUZZLE_LEVELS = [
+  { path: [[0.12, 0.84], [0.12, 0.2], [0.88, 0.2], [0.88, 0.16]], lineWidth: 0.12 }, // 1: simple L
+  { path: [[0.12, 0.84], [0.12, 0.5], [0.5, 0.5], [0.5, 0.2], [0.88, 0.2], [0.88, 0.16]], lineWidth: 0.11 }, // 2: S shape
+  { path: [[0.12, 0.84], [0.12, 0.6], [0.35, 0.6], [0.35, 0.35], [0.65, 0.35], [0.65, 0.2], [0.88, 0.2], [0.88, 0.16]], lineWidth: 0.10 }, // 3
+  { path: [[0.12, 0.84], [0.12, 0.7], [0.3, 0.7], [0.3, 0.5], [0.5, 0.5], [0.5, 0.3], [0.7, 0.3], [0.7, 0.18], [0.88, 0.18], [0.88, 0.16]], lineWidth: 0.09 }, // 4
+  { path: [[0.12, 0.84], [0.12, 0.75], [0.25, 0.75], [0.25, 0.55], [0.45, 0.55], [0.45, 0.4], [0.25, 0.4], [0.25, 0.25], [0.6, 0.25], [0.6, 0.2], [0.88, 0.2], [0.88, 0.16]], lineWidth: 0.085 }, // 5
+  { path: [[0.12, 0.84], [0.12, 0.78], [0.22, 0.78], [0.22, 0.6], [0.38, 0.6], [0.38, 0.45], [0.22, 0.45], [0.22, 0.3], [0.5, 0.3], [0.5, 0.22], [0.72, 0.22], [0.72, 0.18], [0.88, 0.18], [0.88, 0.16]], lineWidth: 0.08 }, // 6
+  { path: [[0.12, 0.84], [0.12, 0.8], [0.2, 0.8], [0.2, 0.65], [0.35, 0.65], [0.35, 0.5], [0.2, 0.5], [0.2, 0.35], [0.4, 0.35], [0.4, 0.25], [0.6, 0.25], [0.6, 0.2], [0.78, 0.2], [0.78, 0.17], [0.88, 0.17], [0.88, 0.16]], lineWidth: 0.075 }, // 7
+  { path: [[0.12, 0.84], [0.12, 0.82], [0.18, 0.82], [0.18, 0.68], [0.3, 0.68], [0.3, 0.55], [0.18, 0.55], [0.18, 0.42], [0.35, 0.42], [0.35, 0.3], [0.2, 0.3], [0.2, 0.2], [0.55, 0.2], [0.55, 0.18], [0.75, 0.18], [0.75, 0.16], [0.88, 0.16]], lineWidth: 0.07 }, // 8
+  { path: [[0.12, 0.84], [0.12, 0.8], [0.16, 0.8], [0.16, 0.7], [0.28, 0.7], [0.28, 0.58], [0.16, 0.58], [0.16, 0.48], [0.32, 0.48], [0.32, 0.38], [0.18, 0.38], [0.18, 0.28], [0.45, 0.28], [0.45, 0.22], [0.62, 0.22], [0.62, 0.18], [0.8, 0.18], [0.8, 0.16], [0.88, 0.16]], lineWidth: 0.065 }, // 9
+  { path: [[0.12, 0.84], [0.12, 0.82], [0.14, 0.82], [0.14, 0.72], [0.24, 0.72], [0.24, 0.62], [0.14, 0.62], [0.14, 0.52], [0.28, 0.52], [0.28, 0.42], [0.14, 0.42], [0.14, 0.32], [0.32, 0.32], [0.32, 0.26], [0.48, 0.26], [0.48, 0.2], [0.64, 0.2], [0.64, 0.17], [0.82, 0.17], [0.82, 0.16], [0.88, 0.16]], lineWidth: 0.06 }, // 10: hardest
+];
+
 // Utility helpers shared across all modes.
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -24,7 +39,7 @@ function randomFruit(id, width, height) {
     x: 60 + Math.random() * (width - 120),
     y: height + 40,
     vx: (Math.random() - 0.5) * 3,
-    vy: -(6 + Math.random() * 5),
+    vy: -(9 + Math.random() * 6),
     radius: 28 + Math.random() * 14,
     sliced: false,
     slicedAt: 0,
@@ -55,6 +70,7 @@ export default class CanvasManager {
     this.hue = 0;
     this.prevDrawPoint = null;
     this.isDrawing = false;
+    this.lastAllFingersExtended = false;
 
     // Fruit slasher mode state.
     this.swordTrail = [];
@@ -69,6 +85,7 @@ export default class CanvasManager {
     this.fruitId = 1;
 
     // Puzzle mode state.
+    this.puzzleLevel = 1;
     this.startPoint = { x: 80, y: this.height - 90 };
     this.finishPoint = { x: this.width - 90, y: 90 };
     this.orb = { ...this.startPoint };
@@ -87,12 +104,12 @@ export default class CanvasManager {
     this.mazeCanvas.width = width;
     this.mazeCanvas.height = height;
 
-    this.startPoint = { x: width * 0.12, y: height * 0.84 };
-    this.finishPoint = { x: width * 0.88, y: height * 0.16 };
-
     if (this.mode === 'puzzle') {
-      this.orb = { ...this.startPoint };
       this.drawMazeLayout();
+      this.orb = { ...this.startPoint };
+    } else {
+      this.startPoint = { x: width * 0.12, y: height * 0.84 };
+      this.finishPoint = { x: width * 0.88, y: height * 0.16 };
     }
   }
 
@@ -102,6 +119,7 @@ export default class CanvasManager {
     this.ctx.clearRect(0, 0, this.width, this.height);
     this.prevDrawPoint = null;
     this.isDrawing = false;
+    this.lastAllFingersExtended = false;
     this.onDrawingToggle?.(false);
 
     if (mode === 'slasher') {
@@ -113,6 +131,13 @@ export default class CanvasManager {
       this.orb = { ...this.startPoint };
       this.drawMazeLayout();
     }
+  }
+
+  setPuzzleLevel(level) {
+    this.puzzleLevel = Math.max(1, Math.min(10, level));
+    this.mazeCompleted = false;
+    this.orb = { ...this.startPoint };
+    this.drawMazeLayout();
   }
 
   // Initializes a fresh 60-second slasher session.
@@ -151,9 +176,24 @@ export default class CanvasManager {
     }
   }
 
-  // Mode A: pinch-to-draw neon rainbow brush.
-  stepNeon({ indexTip, pinchDistance }) {
-    if (!indexTip) {
+  // Mode A: index finger only to draw, all fingers to clear.
+  stepNeon({ indexTip, allFingersExtended, indexPointing }) {
+    // Clear when all fingers extended (open palm)
+    if (allFingersExtended) {
+      if (!this.lastAllFingersExtended) {
+        this.ctx.clearRect(0, 0, this.width, this.height);
+        this.prevDrawPoint = null;
+      }
+      this.lastAllFingersExtended = true;
+      if (this.isDrawing) {
+        this.isDrawing = false;
+        this.onDrawingToggle?.(false);
+      }
+      return;
+    }
+    this.lastAllFingersExtended = false;
+
+    if (!indexTip || !indexPointing) {
       this.prevDrawPoint = null;
       if (this.isDrawing) {
         this.isDrawing = false;
@@ -162,10 +202,17 @@ export default class CanvasManager {
       return;
     }
 
-    const point = toCanvasPoint(indexTip, this.width, this.height);
-    const drawingActive = pinchDistance < 0.05;
+    const raw = toCanvasPoint(indexTip, this.width, this.height);
+    // Smooth point with lerp for cleaner strokes
+    const smooth = this.prevDrawPoint
+      ? {
+          x: this.prevDrawPoint.x * 0.3 + raw.x * 0.7,
+          y: this.prevDrawPoint.y * 0.3 + raw.y * 0.7,
+        }
+      : raw;
+    const point = smooth;
 
-    if (drawingActive) {
+    if (indexPointing) {
       const color = `hsl(${this.hue}, 100%, 62%)`;
       this.ctx.globalCompositeOperation = 'source-over';
       this.ctx.shadowBlur = 20;
@@ -353,27 +400,23 @@ export default class CanvasManager {
     });
   }
 
-  // Builds maze with a carved lane (transparent path through wall color).
+  // Builds maze from PUZZLE_LEVELS for current puzzleLevel.
   drawMazeLayout() {
     this.mazeCtx.clearRect(0, 0, this.width, this.height);
     this.mazeCtx.fillStyle = `rgb(${WALL_RGB.r}, ${WALL_RGB.g}, ${WALL_RGB.b})`;
     this.mazeCtx.fillRect(0, 0, this.width, this.height);
 
-    const path = [
-      [this.width * 0.12, this.height * 0.84],
-      [this.width * 0.12, this.height * 0.24],
-      [this.width * 0.38, this.height * 0.24],
-      [this.width * 0.38, this.height * 0.72],
-      [this.width * 0.62, this.height * 0.72],
-      [this.width * 0.62, this.height * 0.2],
-      [this.width * 0.88, this.height * 0.2],
-      [this.width * 0.88, this.height * 0.16],
-    ];
+    const level = PUZZLE_LEVELS[Math.min(this.puzzleLevel - 1, PUZZLE_LEVELS.length - 1)];
+    const path = level.path.map(([rx, ry]) => [this.width * rx, this.height * ry]);
+    this.startPoint = { x: path[0][0], y: path[0][1] };
+    this.finishPoint = { x: path[path.length - 1][0], y: path[path.length - 1][1] };
+
+    const lineWidth = Math.max(50, Math.min(this.width, this.height) * level.lineWidth);
 
     this.mazeCtx.save();
     this.mazeCtx.globalCompositeOperation = 'destination-out';
     this.mazeCtx.strokeStyle = 'rgba(0,0,0,1)';
-    this.mazeCtx.lineWidth = Math.max(70, this.width * 0.08);
+    this.mazeCtx.lineWidth = lineWidth;
     this.mazeCtx.lineCap = 'round';
     this.mazeCtx.lineJoin = 'round';
     this.mazeCtx.beginPath();
@@ -444,6 +487,9 @@ export default class CanvasManager {
     this.ctx.font = '700 14px Sora, sans-serif';
     this.ctx.fillText('START', this.startPoint.x - 28, this.startPoint.y - 42);
     this.ctx.fillText('FINISH', this.finishPoint.x - 24, this.finishPoint.y - 42);
+    this.ctx.font = '600 12px Sora, sans-serif';
+    this.ctx.fillStyle = 'rgba(251,191,36,0.9)';
+    this.ctx.fillText(`Level ${this.puzzleLevel}`, 14, 24);
   }
 
   // Wall collision via pixel color sampling from maze canvas.
